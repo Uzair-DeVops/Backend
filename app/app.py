@@ -10,7 +10,18 @@ from .config.database import (
 from .config.init_db import create_tables
 from .utils.my_logger import get_logger
 from .config.my_settings import settings
-from .routes import user_router, role_router, scope_router, rbac_router
+from .routes import (
+    admin_user_router,
+    admin_role_router,
+    admin_permission_router,
+    enterprise_client_router,
+    enterprise_admin_router,
+    enterprise_role_router,
+    enterprise_permission_router,
+    enterprise_user_router,
+    end_client_router,
+    auth_router
+)
 # LIFESPAN
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -31,10 +42,16 @@ app = FastAPI(
 
 # CORS MIDDLEWARE
 # ROUTES
-app.include_router(user_router, prefix="/user", )
-app.include_router(role_router, prefix="/role",)
-app.include_router(scope_router, prefix="/scope",)
-app.include_router(rbac_router, prefix="/rbac", )
+app.include_router(auth_router, prefix="/auth")
+app.include_router(admin_user_router, prefix="/admin")
+app.include_router(admin_role_router, prefix="/admin")
+app.include_router(admin_permission_router, prefix="/admin")
+app.include_router(enterprise_client_router, prefix="/admin")
+app.include_router(enterprise_admin_router, prefix="/admin")
+app.include_router(enterprise_role_router, prefix="/admin")
+app.include_router(enterprise_permission_router, prefix="/admin")
+app.include_router(enterprise_user_router, prefix="/admin")
+app.include_router(end_client_router, prefix="/admin")
 
 app.add_middleware(
     CORSMiddleware,

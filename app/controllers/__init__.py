@@ -2,8 +2,11 @@
 App controllers package
 """
 
-# Import controllers when they exist
-from .user_controller import *
-from .role_controller import *
-from .scope_controller import *
-from .rbac_controller import *
+# Import admin controllers
+from .admin_user_controller import *
+from .admin_role_controller import *
+from .admin_permission_controller import *
+from .enterprise_client_controller import *
+
+# Import auth controller
+from .auth_controller import *

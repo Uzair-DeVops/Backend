@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from sqlmodel import SQLModel, Field
 from uuid import UUID, uuid4
+import json
 
 class EnterpriseClientBase(SQLModel):
     """Base enterprise client model with common fields"""
@@ -19,6 +20,8 @@ class EnterpriseClient(EnterpriseClientBase, table=True):
     __tablename__ = "enterprise_clients"
     
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    role_ids: str = Field(default="[]")  # JSON string of role IDs
+    permissions: str = Field(default="[]")  # JSON string of permission IDs
 
 class EnterpriseClientCreate(SQLModel):
     """Enterprise client creation model"""
@@ -27,6 +30,8 @@ class EnterpriseClientCreate(SQLModel):
     contact_person: str = Field(max_length=100)
     phone: Optional[str] = Field(None, max_length=20)
     address: Optional[str] = None
+    role_ids: List[str] = []  # List of role IDs
+    permissions: List[str] = []  # List of permission IDs
 
 class EnterpriseClientUpdate(SQLModel):
     """Enterprise client update model"""
@@ -36,7 +41,11 @@ class EnterpriseClientUpdate(SQLModel):
     phone: Optional[str] = Field(None, max_length=20)
     address: Optional[str] = None
     is_active: Optional[bool] = None
+    role_ids: Optional[List[str]] = None
+    permissions: Optional[List[str]] = None
 
 class EnterpriseClientResponse(EnterpriseClientBase):
     """Enterprise client response model"""
     id: UUID
+    role_ids: List[str] = []  # Converted from JSON string
+    permissions: List[str] = []  # Converted from JSON string

@@ -1,8 +1,8 @@
-# Multi-Role Dashboard Backend with RBAC
+# Main Admin SaaS Backend
 
 ## 🎯 Project Overview
 
-A **Multi-Role Based Dashboard Backend** built with FastAPI, implementing a comprehensive Role-Based Access Control (RBAC) system using a **functional approach**. This system allows administrators to create custom roles with predefined scopes, assign multiple roles to users, and manage permissions granularly.
+A **Main Admin SaaS Backend** built with FastAPI, implementing a comprehensive Role-Based Access Control (RBAC) system using a **functional approach**. This system allows main administrators to create custom roles with predefined permissions, manage enterprise clients, and assign permissions granularly.
 
 ## 🏗️ Architecture Pattern
 
@@ -52,25 +52,18 @@ backend/
 │   │
 │   ├── 📁 models/                # Data models (SQLModel)
 │   │   ├── 📄 __init__.py
-│   │   ├── user_model.py      # User model
-│   │   ├── role_model.py      # Role model
-│   │   ├── scope_model.py     # Scope model
-│   │   ├── user_role_model.py # User-Role relationship
-│   │   └── role_scope_model.py # Role-Scope relationship
+│   │   ├── main_admin_user_model.py      # Main admin users
+│   │   ├── main_admin_role_model.py      # Main admin roles
+│   │   ├── main_admin_permission_model.py # Main admin permissions
+│   │   └── enterprise_client_model.py    # Enterprise clients
 │   │
 │   ├── 📁 controllers/           # Business logic (functional)
 │   │   ├── 📄 __init__.py
-│   │   ├── user_controller.py # User functions
-│   │   ├── role_controller.py # Role functions
-│   │   ├── scope_controller.py # Scope functions
-│   │   └── rbac_controller.py # RBAC relationship functions
+│   │   └── main_admin_controller.py # Main admin functions
 │   │
 │   ├── 📁 routes/                # API routes
 │   │   ├── 📄 __init__.py
-│   │   ├── user_routes.py     # User endpoints
-│   │   ├── role_routes.py     # Role endpoints
-│   │   ├── scope_routes.py    # Scope endpoints
-│   │   └── rbac_routes.py     # RBAC endpoints
+│   │   └── main_admin_routes.py  # Main admin endpoints
 │   │
 │   └── 📁 utils/                 # Utilities
 │       ├── 📄 __init__.py
@@ -84,20 +77,23 @@ backend/
 ### Core Tables (UUID Primary Keys)
 
 ```sql
--- Users table
-CREATE TABLE users (
+-- Main admin users table
+CREATE TABLE main_admin_users (
     id CHAR(36) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     username VARCHAR(255) UNIQUE NOT NULL,
     full_name VARCHAR(100) NOT NULL,
     password VARCHAR(255) NOT NULL,
+    role_id CHAR(36),
+    permissions TEXT DEFAULT '[]',
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (role_id) REFERENCES main_admin_roles(id)
 );
 
--- Roles table
-CREATE TABLE roles (
+-- Main admin roles table
+CREATE TABLE main_admin_roles (
     id CHAR(36) PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
@@ -106,39 +102,28 @@ CREATE TABLE roles (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Scopes table
-CREATE TABLE scopes (
+-- Main admin permissions table
+CREATE TABLE main_admin_permissions (
     id CHAR(36) PRIMARY KEY,
     name VARCHAR(100) UNIQUE NOT NULL,
     description TEXT,
+    action VARCHAR(100) NOT NULL,
     resource VARCHAR(100) NOT NULL,
-    action VARCHAR(50) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- User-Role relationship table
-CREATE TABLE user_roles (
+-- Enterprise clients table
+CREATE TABLE enterprise_clients (
     id CHAR(36) PRIMARY KEY,
-    user_id CHAR(36) NOT NULL,
-    role_id CHAR(36) NOT NULL,
-    assigned_by CHAR(36) NOT NULL,
-    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
-    FOREIGN KEY (assigned_by) REFERENCES users(id),
-    UNIQUE KEY unique_user_role (user_id, role_id)
-);
-
--- Role-Scope relationship table
-CREATE TABLE role_scopes (
-    id CHAR(36) PRIMARY KEY,
-    role_id CHAR(36) NOT NULL,
-    scope_id CHAR(36) NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    contact_person VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    address TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE,
-    FOREIGN KEY (scope_id) REFERENCES scopes(id) ON DELETE CASCADE,
-    UNIQUE KEY unique_role_scope (role_id, scope_id)
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 ```
 
@@ -146,73 +131,53 @@ CREATE TABLE role_scopes (
 
 ### Core Concepts
 
-1. **Users**: System users with authentication
-2. **Roles**: Named collections of permissions
-3. **Scopes**: Individual permissions (resource:action format)
-4. **User-Role Assignment**: Users can have multiple roles
-5. **Role-Scope Assignment**: Roles can have multiple scopes
+1. **Main Admin Users**: System administrators with authentication
+2. **Roles**: Named collections of permissions (admin, finance, support, etc.)
+3. **Permissions**: Individual permissions (resource:action format)
+4. **Enterprise Clients**: Organizations managed by main admin
 
 ### Permission Format
 
 - **Format**: `resource:action`
 - **Examples**:
-  - `user:read` - Read user data
-  - `user:write` - Create/update users
-  - `role:manage` - Manage roles
-  - `scope:delete` - Delete scopes
+  - `enterprise:create` - Create enterprise clients
+  - `enterprise:read` - View enterprise information
+  - `main_admin_user:manage` - Manage main admin users
+  - `role:manage` - Manage roles and permissions
 
 ## 🚀 API Endpoints
 
-### Authentication
+### Main Admin User Management
 
 ```
-POST   /user/login          → Login with email/password
-POST   /user/signup         → Create new user account
-GET    /user/me             → Get current user info
+POST   /main-admin/users              → Create new main admin user
+GET    /main-admin/users              → Get all main admin users
+GET    /main-admin/users/{user_id}    → Get main admin user by ID
+PUT    /main-admin/users/{user_id}    → Update main admin user
+DELETE /main-admin/users/{user_id}    → Delete main admin user
 ```
 
-### User Management
+### Main Admin Role Management
 
 ```
-GET    /user/               → Get all users
-GET    /user/{user_id}      → Get user by ID
-PUT    /user/{user_id}      → Update user
-DELETE /user/{user_id}      → Delete user
+POST   /main-admin/roles              → Create new role
+GET    /main-admin/roles              → Get all roles
+GET    /main-admin/roles/{role_id}    → Get role by ID
 ```
 
-### Role Management
+### Main Admin Permission Management
 
 ```
-POST   /role/               → Create new role
-GET    /role/               → Get all roles
-GET    /role/{role_id}      → Get role by ID
-PUT    /role/{role_id}      → Update role
-DELETE /role/{role_id}      → Delete role
+POST   /main-admin/permissions        → Create new permission
+GET    /main-admin/permissions        → Get all permissions
 ```
 
-### Scope Management
+### Enterprise Client Management
 
 ```
-POST   /scope/              → Create new scope
-GET    /scope/              → Get all scopes
-GET    /scope/{scope_id}    → Get scope by ID
-PUT    /scope/{scope_id}    → Update scope
-DELETE /scope/{scope_id}    → Delete scope
-```
-
-### RBAC Management
-
-```
-POST   /rbac/user-role      → Assign role to user
-DELETE /rbac/user-role/{user_id}/{role_id} → Remove role from user
-GET    /rbac/user-role/{user_id} → Get user's roles
-GET    /rbac/role-users/{role_id} → Get users with role
-
-POST   /rbac/role-scope     → Assign scope to role
-DELETE /rbac/role-scope/{role_id}/{scope_id} → Remove scope from role
-GET    /rbac/role-scope/{role_id} → Get role's scopes
-
-GET    /rbac/user-permissions/{user_id} → Get user's permissions
+POST   /main-admin/enterprise-clients → Create new enterprise client
+GET    /main-admin/enterprise-clients → Get all enterprise clients
+GET    /main-admin/enterprise-clients/{client_id} → Get enterprise client by ID
 ```
 
 ## 🔧 Setup Instructions
@@ -274,26 +239,32 @@ uv run pytest --cov=app
 
 ## 🔑 Default Data
 
-The system includes predefined scopes and roles:
-
-### Default Scopes
-
-- `user:read` - Read user information
-- `user:write` - Create/update users
-- `user:delete` - Delete users
-- `role:read` - Read role information
-- `role:write` - Create/update roles
-- `role:delete` - Delete roles
-- `scope:read` - Read scope information
-- `scope:write` - Create/update scopes
-- `scope:delete` - Delete scopes
+The system includes predefined roles and permissions:
 
 ### Default Roles
 
-- `admin` - Full system access
-- `finance_team` - Finance-related permissions
-- `account_team` - Account management permissions
-- `support_team` - Support-related permissions
+- `main_admin` - Main system administrator with full access
+- `finance_manager` - Finance team manager
+- `support_manager` - Support team manager
+- `account_manager` - Account management team
+
+### Default Permissions
+
+- `create_enterprise` - Create new enterprise clients
+- `view_enterprise` - View enterprise client information
+- `update_enterprise` - Update enterprise client information
+- `delete_enterprise` - Delete enterprise clients
+- `create_main_admin_user` - Create main admin users
+- `view_main_admin_users` - View main admin users
+- `update_main_admin_user` - Update main admin users
+- `delete_main_admin_user` - Delete main admin users
+- `manage_roles` - Manage roles and permissions
+
+### Default Main Admin User
+
+- **Email**: `mainadmin@example.com`
+- **Password**: `mainadmin123`
+- **Role**: `main_admin` with all permissions
 
 ## 🔒 Security Features
 
@@ -306,39 +277,34 @@ The system includes predefined scopes and roles:
 
 ## 📚 Key Benefits
 
-### ✅ **No Foreign Key Ambiguity**
+### ✅ **Simple and Clean Architecture**
 
-- Separate relationship tables for user-role and role-scope
-- Clear foreign key references
-- Proper cascade deletion
-
-### ✅ **Functional Approach**
-
-- No class-based services
-- Pure functions for business logic
-- Easy to test and maintain
-
-### ✅ **Scalable Architecture**
-
-- UUID primary keys for distributed systems
-- Proper indexing on foreign keys
-- Efficient permission checking
+- **Functional approach** - No complex classes
+- **Direct role assignment** - role_id foreign key
+- **JSON permissions** - Flexible permission storage
+- **Easy to understand** and maintain
 
 ### ✅ **Production Ready**
 
-- Comprehensive error handling
-- Structured logging
-- Docker containerization
-- Health check endpoints
+- **Comprehensive error handling**
+- **Structured logging**
+- **Docker containerization**
+- **Health check endpoints**
+
+### ✅ **Scalable Design**
+
+- **UUID primary keys** for distributed systems
+- **Proper indexing** on foreign keys
+- **Efficient permission checking**
 
 ## 🚀 Future Enhancements
 
+- **Enterprise Level** - Enterprise users and their permissions
+- **End Client Level** - Individual end users
 - **Permission Caching** with Redis
-- **Audit Logging** for all RBAC changes
+- **Audit Logging** for all changes
 - **Dynamic Permission Checking** middleware
-- **Bulk Role Assignment** operations
-- **Permission Templates** for common use cases
 
 ---
 
-**This RBAC system provides a solid foundation for scalable, secure multi-role applications with no foreign key ambiguity issues.**
+**This Main Admin system provides a solid foundation for scalable, secure SaaS applications with clean architecture and no complexity.**

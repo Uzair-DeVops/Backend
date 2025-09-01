@@ -1,34 +1,39 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from sqlmodel import SQLModel, Field
 from uuid import UUID, uuid4
+import json
 
-class MainAdminRoleBase(SQLModel):
-    """Base main admin role model with common fields"""
+class AdminRoleBase(SQLModel):
+    """Base admin role model with common fields"""
     name: str = Field(unique=True, index=True, max_length=100)
     description: Optional[str] = Field(default=None)
     is_system_role: bool = Field(default=False, index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-class MainAdminRole(MainAdminRoleBase, table=True):
-    """Main admin role model for database"""
-    __tablename__ = "main_admin_roles"
+class AdminRole(AdminRoleBase, table=True):
+    """Admin role model for database"""
+    __tablename__ = "admin_roles"
     
     id: UUID = Field(default_factory=uuid4, primary_key=True)
+    permissions: str = Field(default="[]")  # JSON string of permission IDs
 
-class MainAdminRoleCreate(SQLModel):
-    """Main admin role creation model"""
+class AdminRoleCreate(SQLModel):
+    """Admin role creation model"""
     name: str = Field(max_length=100)
     description: Optional[str] = None
     is_system_role: bool = False
+    permissions: List[str] = []  # List of permission IDs
 
-class MainAdminRoleUpdate(SQLModel):
-    """Main admin role update model"""
+class AdminRoleUpdate(SQLModel):
+    """Admin role update model"""
     name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
     is_system_role: Optional[bool] = None
+    permissions: Optional[List[str]] = None
 
-class MainAdminRoleResponse(MainAdminRoleBase):
-    """Main admin role response model"""
+class AdminRoleResponse(AdminRoleBase):
+    """Admin role response model"""
     id: UUID
+    permissions: List[str] = []  # Converted from JSON string
