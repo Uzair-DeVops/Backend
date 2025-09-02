@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List
 from sqlmodel import SQLModel, Field
-from uuid import UUID, uuid4
+from uuid import uuid4
 import json
 
 class AdminUserBase(SQLModel):
@@ -17,7 +17,7 @@ class AdminUser(AdminUserBase, table=True):
     """Admin user model for database"""
     __tablename__ = "admin_users"
     
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: str = Field(default_factory=lambda: str(uuid4()).replace('-', ''), primary_key=True)
     password: str
     role_ids: str = Field(default="[]")  # JSON string of role IDs
     permissions: str = Field(default="[]")  # JSON string of permission IDs
@@ -43,7 +43,7 @@ class AdminUserUpdate(SQLModel):
 
 class AdminUserResponse(AdminUserBase):
     """Admin user response model"""
-    id: UUID
+    id: str
     role_ids: List[str] = []  # Converted from JSON string
     permissions: List[str] = []  # Converted from JSON string
 

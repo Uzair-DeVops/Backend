@@ -12,13 +12,14 @@ from ..models.enterprise_admin_model import (
     EnterpriseAdmin, EnterpriseAdminCreate, EnterpriseAdminUpdate, EnterpriseAdminResponse
 )
 from ..utils.my_logger import get_logger
-from ..utils.auth_utils import get_password_hash, verify_password
 
 logger = get_logger("ENTERPRISE_ADMIN_SERVICE")
 
 
 def create_enterprise_admin_service(admin_data: EnterpriseAdminCreate, db: Session) -> EnterpriseAdminResponse:
     """Create a new enterprise admin"""
+    from ..utils.auth_utils import get_password_hash, verify_password
+
     try:
         # Check if email already exists
         existing_admin = get_enterprise_admin_by_email_service(admin_data.email, db)
@@ -212,6 +213,8 @@ def get_enterprise_admins_by_client_service(enterprise_client_id: str, db: Sessi
 
 def update_enterprise_admin_service(admin_id: str, admin_data: EnterpriseAdminUpdate, db: Session) -> EnterpriseAdminResponse:
     """Update enterprise admin"""
+    from ..utils.auth_utils import get_password_hash, verify_password
+
     try:
         # Convert string to UUID
         admin_uuid = UUID(admin_id)
@@ -329,6 +332,7 @@ def delete_enterprise_admin_service(admin_id: str, db: Session) -> bool:
 
 def verify_enterprise_admin_password_service(admin: EnterpriseAdmin, password: str) -> bool:
     """Verify enterprise admin password"""
+    from ..utils.auth_utils import verify_password
     return verify_password(password, admin.password)
 
 
@@ -388,6 +392,8 @@ def deactivate_enterprise_admin_service(admin_id: str, db: Session) -> Enterpris
     """Deactivate an enterprise admin"""
     try:
         admin_uuid = UUID(admin_id)
+        from ..utils.auth_utils import verify_password
+
         statement = select(EnterpriseAdmin).where(EnterpriseAdmin.id == admin_uuid)
         admin = db.exec(statement).first()
         

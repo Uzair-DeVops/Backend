@@ -4,10 +4,13 @@ Authentication utilities for user management
 from datetime import datetime, timedelta
 from typing import Optional
 from passlib.context import CryptContext
-from jose import JWTError, jwt
-from fastapi import HTTPException, status
+import jwt
+from fastapi import HTTPException, status, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ..config.my_settings import settings
 from .my_logger import get_logger
+
+
 logger = get_logger("AUTH")
 
 # Password hashing
@@ -15,8 +18,11 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # JWT settings
 SECRET_KEY = settings.SECRET_KEY or "your-secret-key-change-in-production"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 10080  # 7 days (7 * 24 * 60 = 10080 minutes)
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+
+# Security scheme for Bearer token
+security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash"""
@@ -67,7 +73,7 @@ def verify_token(token: str) -> Optional[dict]:
             return None
         logger.info(f"Token verified for user: {username}")
         return payload
-    except JWTError as e:
+    except jwt.InvalidTokenError as e:
         logger.warning(f"Token verification failed: {e}")
         return None
     except Exception as e:
@@ -79,4 +85,6 @@ def get_current_user_from_token(token: str) -> Optional[str]:
     payload = verify_token(token)
     if payload:
         return payload.get("sub")
-    return None 
+    return None
+
+ 

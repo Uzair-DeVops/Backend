@@ -12,13 +12,14 @@ from ..models.enterprise_user_model import (
     EnterpriseUser, EnterpriseUserCreate, EnterpriseUserUpdate, EnterpriseUserResponse
 )
 from ..utils.my_logger import get_logger
-from ..utils.auth_utils import get_password_hash, verify_password
 
 logger = get_logger("ENTERPRISE_USER_SERVICE")
 
 
 def create_enterprise_user_service(user_data: EnterpriseUserCreate, db: Session) -> EnterpriseUserResponse:
     """Create a new enterprise user"""
+    from ..utils.auth_utils import get_password_hash, verify_password
+
     try:
         # Check if email already exists
         existing_user = get_enterprise_user_by_email_service(user_data.email, db)
@@ -458,6 +459,8 @@ def delete_enterprise_user_service(user_id: str, db: Session) -> bool:
 
 def verify_enterprise_user_password_service(user: EnterpriseUser, password: str) -> bool:
     """Verify enterprise user password"""
+    from ..utils.auth_utils import verify_password
+
     return verify_password(password, user.password)
 
 
@@ -465,6 +468,8 @@ def activate_enterprise_user_service(user_id: str, db: Session) -> EnterpriseUse
     """Activate an enterprise user"""
     try:
         user_uuid = UUID(user_id)
+        from ..utils.auth_utils import verify_password
+
         statement = select(EnterpriseUser).where(EnterpriseUser.id == user_uuid)
         user = db.exec(statement).first()
         
@@ -523,6 +528,8 @@ def deactivate_enterprise_user_service(user_id: str, db: Session) -> EnterpriseU
     """Deactivate an enterprise user"""
     try:
         user_uuid = UUID(user_id)
+        from ..utils.auth_utils import verify_password
+
         statement = select(EnterpriseUser).where(EnterpriseUser.id == user_uuid)
         user = db.exec(statement).first()
         
@@ -581,6 +588,8 @@ def update_enterprise_user_settings_service(user_id: str, settings: dict, db: Se
     """Update enterprise user settings"""
     try:
         user_uuid = UUID(user_id)
+        from ..utils.auth_utils import verify_password
+
         statement = select(EnterpriseUser).where(EnterpriseUser.id == user_uuid)
         user = db.exec(statement).first()
         

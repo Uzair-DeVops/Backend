@@ -78,12 +78,31 @@ def get_admin_role_by_name_service(name: str, db: Session) -> Optional[AdminRole
 
 
 def get_admin_role_by_id_service(role_id: str, db: Session) -> Optional[AdminRoleResponse]:
-    """Get admin role by ID"""
+    """Get admin role by ID - Supports both hex strings and simple integers"""
     try:
-        # Convert string to UUID
-        role_uuid = UUID(role_id)
-        statement = select(AdminRole).where(AdminRole.id == role_uuid)
+        # Try to find by the exact ID string first (for hex IDs)
+        statement = select(AdminRole).where(AdminRole.id == role_id)
         role = db.exec(statement).first()
+        
+        if not role:
+            # If not found, try to find by position/index (for integer IDs)
+            try:
+                int_id = int(role_id)
+                if int_id > 0:
+                    # Get all roles and find by position (1-based index)
+                    all_roles = db.exec(select(AdminRole)).all()
+                    if 0 < int_id <= len(all_roles):
+                        role = all_roles[int_id - 1]  # Convert to 0-based index
+                        logger.info(f"Found role by position {int_id}: {role.name}")
+                    else:
+                        logger.warning(f"Position {int_id} out of range. Total roles: {len(all_roles)}")
+                        return None
+                else:
+                    logger.warning(f"Invalid position: {int_id}")
+                    return None
+            except ValueError:
+                logger.warning(f"Invalid ID format: {role_id}")
+                return None
         
         if not role:
             return None
@@ -101,9 +120,6 @@ def get_admin_role_by_id_service(role_id: str, db: Session) -> Optional[AdminRol
             updated_at=role.updated_at
         )
         
-    except ValueError as e:
-        logger.error(f"Invalid UUID format: {e}")
-        return None
     except Exception as e:
         logger.error(f"Error getting role by ID: {e}")
         return None
@@ -167,7 +183,7 @@ def update_admin_role_service(role_id: str, role_data: AdminRoleUpdate, db: Sess
                 setattr(role, field, value)
         
         # Update timestamp
-        role.updated_at = datetime.now()
+        role.updated_at = datetime.utcnow()
         
         db.add(role)
         db.commit()
@@ -253,7 +269,7 @@ def activate_role_service(role_id: str, db: Session) -> AdminRoleResponse:
             )
         
         role.is_active = True
-        role.updated_at = datetime.now()
+        role.updated_at = datetime.utcnow()
         
         db.add(role)
         db.commit()
@@ -302,7 +318,7 @@ def deactivate_role_service(role_id: str, db: Session) -> AdminRoleResponse:
             )
         
         role.is_active = False
-        role.updated_at = datetime.now()
+        role.updated_at = datetime.utcnow()
         
         db.add(role)
         db.commit()

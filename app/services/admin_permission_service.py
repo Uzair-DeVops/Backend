@@ -190,7 +190,7 @@ def update_admin_permission_service(permission_id: str, permission_data: AdminPe
                 setattr(permission, field, value)
         
         # Update timestamp
-        permission.updated_at = datetime.now()
+        permission.updated_at = datetime.utcnow()
         
         db.add(permission)
         db.commit()
@@ -277,7 +277,7 @@ def activate_permission_service(permission_id: str, db: Session) -> AdminPermiss
             )
         
         permission.is_active = True
-        permission.updated_at = datetime.now()
+        permission.updated_at = datetime.utcnow()
         
         db.add(permission)
         db.commit()
@@ -327,7 +327,7 @@ def deactivate_permission_service(permission_id: str, db: Session) -> AdminPermi
             )
         
         permission.is_active = False
-        permission.updated_at = datetime.now()
+        permission.updated_at = datetime.utcnow()
         
         db.add(permission)
         db.commit()

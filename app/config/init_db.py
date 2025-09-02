@@ -97,24 +97,28 @@ def create_default_admin_roles(session: Session):
             "name": "main_admin",
             "description": "Main system administrator with full access",
             "is_system_role": True,
+            "is_active": True,
             "permissions": json.dumps(all_permission_ids)
         },
         {
             "name": "finance_manager",
             "description": "Finance team manager",
             "is_system_role": False,
+            "is_active": True,
             "permissions": json.dumps(finance_permission_ids)
         },
         {
             "name": "support_manager",
             "description": "Support team manager",
             "is_system_role": False,
+            "is_active": True,
             "permissions": json.dumps(support_permission_ids)
         },
         {
             "name": "account_manager",
             "description": "Account management team",
             "is_system_role": False,
+            "is_active": True,
             "permissions": json.dumps(account_permission_ids)
         }
     ]
@@ -133,55 +137,64 @@ def create_default_admin_permissions(session: Session):
             "name": "create_enterprise",
             "description": "Create new enterprise clients",
             "action": "create",
-            "resource": "enterprise"
+            "resource": "enterprise",
+            "is_active": True
         },
         {
             "name": "view_enterprise",
             "description": "View enterprise client information",
             "action": "read",
-            "resource": "enterprise"
+            "resource": "enterprise",
+            "is_active": True
         },
         {
             "name": "update_enterprise",
             "description": "Update enterprise client information",
             "action": "update",
-            "resource": "enterprise"
+            "resource": "enterprise",
+            "is_active": True
         },
         {
             "name": "delete_enterprise",
             "description": "Delete enterprise clients",
             "action": "delete",
-            "resource": "enterprise"
+            "resource": "enterprise",
+            "is_active": True
         },
         {
             "name": "create_main_admin_user",
             "description": "Create main admin users",
             "action": "create",
-            "resource": "main_admin_user"
+            "resource": "main_admin_user",
+            "is_active": True
         },
         {
             "name": "view_main_admin_users",
             "description": "View main admin users",
             "action": "read",
-            "resource": "main_admin_user"
+            "resource": "main_admin_user",
+            "is_active": True
         },
         {
             "name": "update_main_admin_user",
             "description": "Update main admin users",
             "action": "update",
-            "resource": "main_admin_user"
+            "resource": "main_admin_user",
+            "is_active": True
         },
         {
             "name": "delete_main_admin_user",
             "description": "Delete main admin users",
             "action": "delete",
-            "resource": "main_admin_user"
+            "resource": "main_admin_user",
+            "is_active": True
         },
         {
             "name": "manage_roles",
             "description": "Manage roles and permissions",
             "action": "manage",
-            "resource": "role"
+            "resource": "role",
+            "is_active": True
         }
     ]
     
@@ -252,6 +265,7 @@ def create_default_admin_client_role(session: Session):
         name="enterprise_client",
         description="Default role for enterprise clients",
         is_system_role=True,
+        is_active=True,
         permissions=json.dumps(basic_permission_ids)
     )
     

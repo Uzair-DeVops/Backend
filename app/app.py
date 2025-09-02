@@ -43,15 +43,15 @@ app = FastAPI(
 # CORS MIDDLEWARE
 # ROUTES
 app.include_router(auth_router, prefix="/auth")
-app.include_router(admin_user_router, prefix="/admin")
-app.include_router(admin_role_router, prefix="/admin")
-app.include_router(admin_permission_router, prefix="/admin")
-app.include_router(enterprise_client_router, prefix="/admin")
-app.include_router(enterprise_admin_router, prefix="/admin")
-app.include_router(enterprise_role_router, prefix="/admin")
-app.include_router(enterprise_permission_router, prefix="/admin")
-app.include_router(enterprise_user_router, prefix="/admin")
-app.include_router(end_client_router, prefix="/admin")
+app.include_router(admin_user_router)
+app.include_router(admin_role_router)
+app.include_router(admin_permission_router)
+app.include_router(enterprise_client_router)
+app.include_router(enterprise_admin_router)
+app.include_router(enterprise_role_router)
+app.include_router(enterprise_permission_router)
+app.include_router(enterprise_user_router)
+app.include_router(end_client_router)
 
 app.add_middleware(
     CORSMiddleware,

@@ -14,9 +14,10 @@ from ..controllers.admin_user_controller import (
     deactivate_user
 )
 from ..models.admin_user_model import (
-    AdminUserCreate, AdminUserUpdate, AdminUserResponse
+    AdminUserCreate, AdminUserUpdate, AdminUserResponse, AdminUser
 )
 from ..utils.database_dependency import get_database_session
+from ..services.auth_service import require_admin_user_service as require_admin_user
 from ..utils.my_logger import get_logger
 
 logger = get_logger("ADMIN_USER_ROUTES")
@@ -26,24 +27,30 @@ router = APIRouter(prefix="/users", tags=["Admin Users"])
 @router.post("/", response_model=AdminUserResponse)
 async def create_admin_user_endpoint(
     user_data: AdminUserCreate,
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: AdminUser = Depends(require_admin_user)
 ):
-    """Create a new admin user"""
+    """Create a new admin user - Requires admin authentication"""
+    logger.info(f"Admin user {current_user.email} creating new admin user")
     return create_admin_user(user_data, db)
 
 @router.get("/", response_model=List[AdminUserResponse])
 async def get_admin_users_endpoint(
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: AdminUser = Depends(require_admin_user)
 ):
-    """Get all admin users"""
+    """Get all admin users - Requires admin authentication"""
+    logger.info(f"Admin user {current_user.email} fetching all admin users")
     return get_all_admin_users(db)
 
 @router.get("/{user_id}", response_model=AdminUserResponse)
 async def get_admin_user_endpoint(
     user_id: str,
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: AdminUser = Depends(require_admin_user)
 ):
-    """Get admin user by ID"""
+    """Get admin user by ID - Requires admin authentication"""
+    logger.info(f"Admin user {current_user.email} fetching admin user {user_id}")
     user = get_admin_user_by_id(user_id, db)
     if not user:
         raise HTTPException(
@@ -56,33 +63,41 @@ async def get_admin_user_endpoint(
 async def update_admin_user_endpoint(
     user_id: str,
     user_data: AdminUserUpdate,
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: AdminUser = Depends(require_admin_user)
 ):
-    """Update admin user"""
+    """Update admin user - Requires admin authentication"""
+    logger.info(f"Admin user {current_user.email} updating admin user {user_id}")
     return update_admin_user(user_id, user_data, db)
 
 @router.patch("/{user_id}/activate", response_model=AdminUserResponse)
 async def activate_admin_user_endpoint(
     user_id: str,
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: AdminUser = Depends(require_admin_user)
 ):
-    """Activate an admin user"""
+    """Activate an admin user - Requires admin authentication"""
+    logger.info(f"Admin user {current_user.email} activating admin user {user_id}")
     return activate_user(user_id, db)
 
 @router.patch("/{user_id}/deactivate", response_model=AdminUserResponse)
 async def deactivate_admin_user_endpoint(
     user_id: str,
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: AdminUser = Depends(require_admin_user)
 ):
-    """Deactivate an admin user"""
+    """Deactivate an admin user - Requires admin authentication"""
+    logger.info(f"Admin user {current_user.email} deactivating admin user {user_id}")
     return deactivate_user(user_id, db)
 
 @router.delete("/{user_id}")
 async def delete_admin_user_endpoint(
     user_id: str,
-    db: Session = Depends(get_database_session)
+    db: Session = Depends(get_database_session),
+    current_user: AdminUser = Depends(require_admin_user)
 ):
-    """Delete admin user"""
+    """Delete admin user - Requires admin authentication"""
+    logger.info(f"Admin user {current_user.email} deleting admin user {user_id}")
     success = delete_admin_user(user_id, db)
     if success:
         return {"message": "User deleted successfully"}

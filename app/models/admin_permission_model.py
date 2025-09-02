@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from sqlmodel import SQLModel, Field
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 class AdminPermissionBase(SQLModel):
     """Base admin permission model with common fields"""
@@ -9,6 +9,7 @@ class AdminPermissionBase(SQLModel):
     description: Optional[str] = Field(default=None)
     action: str = Field(max_length=100, index=True)
     resource: str = Field(max_length=100, index=True)
+    is_active: bool = Field(default=True, index=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -16,7 +17,7 @@ class AdminPermission(AdminPermissionBase, table=True):
     """Admin permission model for database"""
     __tablename__ = "admin_permissions"
     
-    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    id: str = Field(default_factory=lambda: str(uuid4()).replace('-', ''), primary_key=True)
 
 class AdminPermissionCreate(SQLModel):
     """Admin permission creation model"""
@@ -24,6 +25,7 @@ class AdminPermissionCreate(SQLModel):
     description: Optional[str] = None
     action: str = Field(max_length=100)
     resource: str = Field(max_length=100)
+    is_active: bool = True
 
 class AdminPermissionUpdate(SQLModel):
     """Admin permission update model"""
@@ -31,7 +33,8 @@ class AdminPermissionUpdate(SQLModel):
     description: Optional[str] = None
     action: Optional[str] = Field(None, max_length=100)
     resource: Optional[str] = Field(None, max_length=100)
+    is_active: Optional[bool] = None
 
 class AdminPermissionResponse(AdminPermissionBase):
     """Admin permission response model"""
-    id: UUID
+    id: str

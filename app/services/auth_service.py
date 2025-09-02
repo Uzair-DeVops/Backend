@@ -15,13 +15,14 @@ from ..models.auth_model import  TokenData, TokenResponse
 from ..utils.my_logger import get_logger
 from ..utils.database_dependency import get_database_session
 from .admin_user_service import get_admin_user_by_email_service, verify_user_password_service
+from ..config.my_settings import settings
 
 logger = get_logger("AUTH_SERVICE")
 
 # JWT Configuration
-SECRET_KEY = "your-secret-key-here"  # Should be in environment variables
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = settings.SECRET_KEY
+ALGORITHM = settings.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
@@ -32,9 +33,9 @@ def create_access_token_service(data: dict, expires_delta: Optional[timedelta] =
     try:
         to_encode = data.copy()
         if expires_delta:
-            expire = datetime.now() + expires_delta
+            expire = datetime.utcnow() + expires_delta
         else:
-            expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -64,7 +65,7 @@ def verify_token_service(token: str) -> Optional[TokenData]:
     except jwt.ExpiredSignatureError:
         logger.warning("Token has expired")
         return None
-    except jwt.JWTError as e:
+    except jwt.InvalidTokenError as e:
         logger.error(f"JWT error: {e}")
         return None
     except Exception as e:
@@ -202,6 +203,65 @@ def logout_user_service(current_user: AdminUser) -> dict:
         )
 
 
+def get_current_admin_user_service(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_database_session)
+) -> AdminUser:
+    """Get current authenticated admin user from Bearer token"""
+    try:
+        token = credentials.credentials
+        payload = verify_token_service(token)
+        
+        if payload is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        email: str = payload.email
+        if email is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Get user from database
+        user = get_admin_user_by_email_service(email, db)
+        if user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Inactive user",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        logger.info(f"Current admin user authenticated: {email}")
+        return user
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting current admin user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def require_admin_user_service(current_user: AdminUser = Depends(get_current_admin_user_service)) -> AdminUser:
+    """Dependency that requires an authenticated admin user"""
+    return current_user
+
+
 def change_password_service(
     current_user: AdminUser, 
     current_password: str, 
@@ -223,7 +283,7 @@ def change_password_service(
         
         # Update password
         current_user.password = hashed_new_password
-        current_user.updated_at = datetime.now()
+        current_user.updated_at = datetime.utcnow()
         
         db.add(current_user)
         db.commit()

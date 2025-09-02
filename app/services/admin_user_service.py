@@ -17,6 +17,76 @@ from ..utils.auth_utils import get_password_hash, verify_password
 logger = get_logger("ADMIN_USER_SERVICE")
 
 
+def _convert_id_to_user(user_id: str, db: Session) -> Optional[AdminUser]:
+    """Helper function to convert ID (hex string or integer position) to user object"""
+    try:
+        # Try to find by the exact ID string first (for hex IDs)
+        statement = select(AdminUser).where(AdminUser.id == user_id)
+        user = db.exec(statement).first()
+        
+        if not user:
+            # If not found, try to find by position/index (for integer IDs)
+            try:
+                int_id = int(user_id)
+                if int_id > 0:
+                    # Get all users and find by position (1-based index)
+                    all_users = db.exec(select(AdminUser)).all()
+                    if 0 < int_id <= len(all_users):
+                        user = all_users[int_id - 1]  # Convert to 0-based index
+                        logger.info(f"Found user by position {int_id}: {user.email}")
+                    else:
+                        logger.warning(f"Position {int_id} out of range. Total users: {len(all_users)}")
+                        return None
+                else:
+                    logger.warning(f"Invalid position: {int_id}")
+                    return None
+            except ValueError:
+                logger.warning(f"Invalid ID format: {user_id}")
+                return None
+        
+        return user
+        
+    except Exception as e:
+        logger.error(f"Error converting ID to user: {e}")
+        return None
+
+
+def _get_user_permissions_from_roles(user: AdminUser, db: Session) -> List[str]:
+    """Helper function to get actual permissions from user's assigned roles"""
+    try:
+        role_permissions = []
+        if user.role_ids:
+            from ..models.admin_role_model import AdminRole
+            role_ids = json.loads(user.role_ids)
+            for role_id in role_ids:
+                # Normalize UUID format (remove hyphens for database lookup)
+                normalized_role_id = role_id.replace('-', '')
+                role = db.exec(select(AdminRole).where(AdminRole.id == normalized_role_id)).first()
+                if role and role.permissions:
+                    try:
+                        role_perms = json.loads(role.permissions)
+                        role_permissions.extend(role_perms)
+                    except json.JSONDecodeError:
+                        logger.warning(f"Invalid permissions JSON for role {role_id}")
+        
+        # Also include any direct permissions assigned to the user
+        user_permissions = []
+        if user.permissions:
+            try:
+                user_perms = json.loads(user.permissions)
+                user_permissions.extend(user_perms)
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid permissions JSON for user {user.id}")
+        
+        # Combine and remove duplicates
+        all_permissions = list(set(role_permissions + user_permissions))
+        return all_permissions
+        
+    except Exception as e:
+        logger.error(f"Error getting user permissions from roles: {e}")
+        return []
+
+
 def create_admin_user_service(user_data: AdminUserCreate, db: Session) -> AdminUserResponse:
     """Create a new admin user"""
     try:
@@ -41,9 +111,36 @@ def create_admin_user_service(user_data: AdminUserCreate, db: Session) -> AdminU
         # Hash password
         hashed_password = get_password_hash(user_data.password)
         
+        # Get permissions from assigned roles
+        role_permissions = []
+        if user_data.role_ids:
+            from ..models.admin_role_model import AdminRole
+            for role_id in user_data.role_ids:
+                # Normalize UUID format (remove hyphens for database lookup)
+                normalized_role_id = role_id.replace('-', '')
+                logger.info(f"Looking up role: original_id={role_id}, normalized_id={normalized_role_id}")
+                
+                try:
+                    role = db.exec(select(AdminRole).where(AdminRole.id == normalized_role_id)).first()
+                    logger.info(f"Role lookup result: {role.name if role else 'Not found'}")
+                    
+                    if role and role.permissions:
+                        try:
+                            role_perms = json.loads(role.permissions)
+                            role_permissions.extend(role_perms)
+                            logger.info(f"Added {len(role_perms)} permissions from role {role.name}")
+                        except json.JSONDecodeError:
+                            logger.warning(f"Invalid permissions JSON for role {role_id}")
+                except Exception as e:
+                    logger.error(f"Error looking up role {role_id}: {e}")
+                    continue
+        
+        # Combine role permissions with any additional permissions passed in request
+        all_permissions = list(set(role_permissions + user_data.permissions))  # Remove duplicates
+        
         # Convert role_ids and permissions lists to JSON strings
         role_ids_json = json.dumps(user_data.role_ids)
-        permissions_json = json.dumps(user_data.permissions)
+        permissions_json = json.dumps(all_permissions)
         
         # Create user object
         user = AdminUser(
@@ -71,7 +168,7 @@ def create_admin_user_service(user_data: AdminUserCreate, db: Session) -> AdminU
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=user_data.role_ids,
-            permissions=user_data.permissions
+            permissions=all_permissions  # Return the actual permissions from roles
         )
         
     except HTTPException:
@@ -106,19 +203,16 @@ def get_admin_user_by_username_service(username: str, db: Session) -> Optional[A
 
 
 def get_admin_user_by_id_service(user_id: str, db: Session) -> Optional[AdminUserResponse]:
-    """Get admin user by ID"""
+    """Get admin user by ID - Supports both hex strings and simple integers"""
     try:
-        # Convert string to UUID
-        user_uuid = UUID(user_id)
-        statement = select(AdminUser).where(AdminUser.id == user_uuid)
-        user = db.exec(statement).first()
+        user = _convert_id_to_user(user_id, db)
         
         if not user:
             return None
         
-        # Convert JSON role_ids and permissions back to lists
+        # Get actual permissions from roles
         role_ids = json.loads(user.role_ids) if user.role_ids else []
-        permissions = json.loads(user.permissions) if user.permissions else []
+        permissions = _get_user_permissions_from_roles(user, db)
         
         return AdminUserResponse(
             id=user.id,
@@ -132,9 +226,6 @@ def get_admin_user_by_id_service(user_id: str, db: Session) -> Optional[AdminUse
             permissions=permissions
         )
         
-    except ValueError as e:
-        logger.error(f"Invalid UUID format: {e}")
-        return None
     except Exception as e:
         logger.error(f"Error getting user by ID: {e}")
         return None
@@ -156,7 +247,7 @@ def get_all_admin_users_service(db: Session) -> List[AdminUserResponse]:
                 created_at=user.created_at,
                 updated_at=user.updated_at,
                 role_ids=json.loads(user.role_ids) if user.role_ids else [],
-                permissions=json.loads(user.permissions) if user.permissions else []
+                permissions=_get_user_permissions_from_roles(user, db)
             )
             for user in users
         ]
@@ -170,12 +261,9 @@ def get_all_admin_users_service(db: Session) -> List[AdminUserResponse]:
 
 
 def update_admin_user_service(user_id: str, user_data: AdminUserUpdate, db: Session) -> AdminUserResponse:
-    """Update admin user"""
+    """Update admin user - Supports both hex strings and simple integers"""
     try:
-        # Convert string to UUID
-        user_uuid = UUID(user_id)
-        statement = select(AdminUser).where(AdminUser.id == user_uuid)
-        user = db.exec(statement).first()
+        user = _convert_id_to_user(user_id, db)
         
         if not user:
             raise HTTPException(
@@ -211,7 +299,7 @@ def update_admin_user_service(user_id: str, user_data: AdminUserUpdate, db: Sess
                 setattr(user, field, value)
         
         # Update timestamp
-        user.updated_at = datetime.now()
+        user.updated_at = datetime.utcnow()
         
         db.add(user)
         db.commit()
@@ -228,7 +316,7 @@ def update_admin_user_service(user_id: str, user_data: AdminUserUpdate, db: Sess
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=json.loads(user.role_ids) if user.role_ids else [],
-            permissions=json.loads(user.permissions) if user.permissions else []
+            permissions=_get_user_permissions_from_roles(user, db)
         )
         
     except ValueError as e:
@@ -249,12 +337,9 @@ def update_admin_user_service(user_id: str, user_data: AdminUserUpdate, db: Sess
 
 
 def delete_admin_user_service(user_id: str, db: Session) -> bool:
-    """Delete admin user"""
+    """Delete admin user - Supports both hex strings and simple integers"""
     try:
-        # Convert string to UUID
-        user_uuid = UUID(user_id)
-        statement = select(AdminUser).where(AdminUser.id == user_uuid)
-        user = db.exec(statement).first()
+        user = _convert_id_to_user(user_id, db)
         
         if not user:
             raise HTTPException(
@@ -268,12 +353,6 @@ def delete_admin_user_service(user_id: str, db: Session) -> bool:
         logger.info(f"Admin user deleted successfully: {user.email}")
         return True
         
-    except ValueError as e:
-        logger.error(f"Invalid UUID format: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid user ID format"
-        )
     except HTTPException:
         raise
     except Exception as e:
@@ -291,11 +370,9 @@ def verify_user_password_service(user: AdminUser, password: str) -> bool:
 
 
 def activate_user_service(user_id: str, db: Session) -> AdminUserResponse:
-    """Activate a user account"""
+    """Activate a user account - Supports both hex strings and simple integers"""
     try:
-        user_uuid = UUID(user_id)
-        statement = select(AdminUser).where(AdminUser.id == user_uuid)
-        user = db.exec(statement).first()
+        user = _convert_id_to_user(user_id, db)
         
         if not user:
             raise HTTPException(
@@ -304,7 +381,7 @@ def activate_user_service(user_id: str, db: Session) -> AdminUserResponse:
             )
         
         user.is_active = True
-        user.updated_at = datetime.now()
+        user.updated_at = datetime.utcnow()
         
         db.add(user)
         db.commit()
@@ -321,15 +398,9 @@ def activate_user_service(user_id: str, db: Session) -> AdminUserResponse:
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=json.loads(user.role_ids) if user.role_ids else [],
-            permissions=json.loads(user.permissions) if user.permissions else []
+            permissions=_get_user_permissions_from_roles(user, db)
         )
         
-    except ValueError as e:
-        logger.error(f"Invalid UUID format: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid user ID format"
-        )
     except HTTPException:
         raise
     except Exception as e:
@@ -342,11 +413,9 @@ def activate_user_service(user_id: str, db: Session) -> AdminUserResponse:
 
 
 def deactivate_user_service(user_id: str, db: Session) -> AdminUserResponse:
-    """Deactivate a user account"""
+    """Deactivate a user account - Supports both hex strings and simple integers"""
     try:
-        user_uuid = UUID(user_id)
-        statement = select(AdminUser).where(AdminUser.id == user_uuid)
-        user = db.exec(statement).first()
+        user = _convert_id_to_user(user_id, db)
         
         if not user:
             raise HTTPException(
@@ -355,7 +424,7 @@ def deactivate_user_service(user_id: str, db: Session) -> AdminUserResponse:
             )
         
         user.is_active = False
-        user.updated_at = datetime.now()
+        user.updated_at = datetime.utcnow()
         
         db.add(user)
         db.commit()
@@ -375,12 +444,6 @@ def deactivate_user_service(user_id: str, db: Session) -> AdminUserResponse:
             permissions=json.loads(user.permissions) if user.permissions else []
         )
         
-    except ValueError as e:
-        logger.error(f"Invalid UUID format: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid user ID format"
-        )
     except HTTPException:
         raise
     except Exception as e:
