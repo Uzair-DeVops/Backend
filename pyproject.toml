@@ -20,4 +20,5 @@ dependencies = [
         "passlib[bcrypt]>=1.7.4",
         "python-jose[cryptography]>=3.3.0",
         "PyJWT>=2.8.0",
+        "clickhouse-driver>=0.2.9",
 ]

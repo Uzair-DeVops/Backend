@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from urllib.parse import urlparse, unquote
 from sqlmodel import SQLModel, create_engine, Session, text
-from clickhouse_driver import Client
 from .my_settings import settings
 from ..utils.my_logger import get_logger
 
