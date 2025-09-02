@@ -20,16 +20,16 @@ class Colors:
 
 # Emoji icons for different log levels
 class Icons:
-    DEBUG = "🔍"
-    INFO = "ℹ️"
-    WARNING = "⚠️"
-    ERROR = "❌"
-    CRITICAL = "🚨"
-    SUCCESS = "✅"
-    DATABASE = "🗄️"
-    API = "🌐"
-    STARTUP = "🚀"
-    SHUTDOWN = "🛑"
+    DEBUG = ""
+    INFO = "ℹ"
+    WARNING = ""
+    ERROR = ""
+    CRITICAL = ""
+    SUCCESS = ""
+    DATABASE = ""
+    API = ""
+    STARTUP = ""
+    SHUTDOWN = ""
 
 class ColoredFormatter(logging.Formatter):
     """Custom formatter with colors and emojis for different log levels"""
