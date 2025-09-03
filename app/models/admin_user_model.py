@@ -46,6 +46,7 @@ class AdminUserResponse(AdminUserBase):
     id: str
     role_ids: List[str] = []  # Converted from JSON string
     permissions: List[str] = []  # Converted from JSON string
+    permission_names: List[str] = []  # Actual permission names for display
 
 class AdminUserLogin(SQLModel):
     """Admin user login model"""

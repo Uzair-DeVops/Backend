@@ -87,6 +87,31 @@ def _get_user_permissions_from_roles(user: AdminUser, db: Session) -> List[str]:
         return []
 
 
+def _get_permission_names_from_ids(permission_ids: List[str], db: Session) -> List[str]:
+    """Helper function to convert permission IDs to permission names"""
+    try:
+        if not permission_ids:
+            return []
+        
+        from ..models.admin_permission_model import AdminPermission
+        permission_names = []
+        
+        for perm_id in permission_ids:
+            # Normalize UUID format (remove hyphens for database lookup)
+            normalized_perm_id = perm_id.replace('-', '')
+            permission = db.exec(select(AdminPermission).where(AdminPermission.id == normalized_perm_id)).first()
+            if permission:
+                permission_names.append(permission.name)
+            else:
+                logger.warning(f"Permission with ID {perm_id} not found")
+        
+        return permission_names
+        
+    except Exception as e:
+        logger.error(f"Error getting permission names from IDs: {e}")
+        return []
+
+
 def create_admin_user_service(user_data: AdminUserCreate, db: Session) -> AdminUserResponse:
     """Create a new admin user"""
     try:
@@ -168,7 +193,8 @@ def create_admin_user_service(user_data: AdminUserCreate, db: Session) -> AdminU
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=user_data.role_ids,
-            permissions=all_permissions  # Return the actual permissions from roles
+            permissions=all_permissions,  # Return the actual permissions from roles
+            permission_names=_get_permission_names_from_ids(all_permissions, db)
         )
         
     except HTTPException:
@@ -223,7 +249,8 @@ def get_admin_user_by_id_service(user_id: str, db: Session) -> Optional[AdminUse
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=role_ids,
-            permissions=permissions
+            permissions=permissions,
+            permission_names=_get_permission_names_from_ids(permissions, db)
         )
         
     except Exception as e:
@@ -247,7 +274,8 @@ def get_all_admin_users_service(db: Session) -> List[AdminUserResponse]:
                 created_at=user.created_at,
                 updated_at=user.updated_at,
                 role_ids=json.loads(user.role_ids) if user.role_ids else [],
-                permissions=_get_user_permissions_from_roles(user, db)
+                permissions=_get_user_permissions_from_roles(user, db),
+                permission_names=_get_permission_names_from_ids(_get_user_permissions_from_roles(user, db), db)
             )
             for user in users
         ]
@@ -316,7 +344,8 @@ def update_admin_user_service(user_id: str, user_data: AdminUserUpdate, db: Sess
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=json.loads(user.role_ids) if user.role_ids else [],
-            permissions=_get_user_permissions_from_roles(user, db)
+            permissions=_get_user_permissions_from_roles(user, db),
+            permission_names=_get_permission_names_from_ids(_get_user_permissions_from_roles(user, db), db)
         )
         
     except ValueError as e:
@@ -398,7 +427,8 @@ def activate_user_service(user_id: str, db: Session) -> AdminUserResponse:
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=json.loads(user.role_ids) if user.role_ids else [],
-            permissions=_get_user_permissions_from_roles(user, db)
+            permissions=_get_user_permissions_from_roles(user, db),
+            permission_names=_get_permission_names_from_ids(_get_user_permissions_from_roles(user, db), db)
         )
         
     except HTTPException:
@@ -441,7 +471,8 @@ def deactivate_user_service(user_id: str, db: Session) -> AdminUserResponse:
             created_at=user.created_at,
             updated_at=user.updated_at,
             role_ids=json.loads(user.role_ids) if user.role_ids else [],
-            permissions=json.loads(user.permissions) if user.permissions else []
+            permissions=_get_user_permissions_from_roles(user, db),
+            permission_names=_get_permission_names_from_ids(_get_user_permissions_from_roles(user, db), db)
         )
         
     except HTTPException:
