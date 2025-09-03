@@ -156,7 +156,7 @@ def update_admin_role_service(role_id: str, role_data: AdminRoleUpdate, db: Sess
     """Update admin role"""
     try:
         # Convert string to UUID
-        role_uuid = UUID(role_id)
+        role_uuid = role_id
         statement = select(AdminRole).where(AdminRole.id == role_uuid)
         role = db.exec(statement).first()
         
@@ -222,7 +222,7 @@ def delete_admin_role_service(role_id: str, db: Session) -> bool:
     """Delete admin role"""
     try:
         # Convert string to UUID
-        role_uuid = UUID(role_id)
+        role_uuid = role_id
         statement = select(AdminRole).where(AdminRole.id == role_uuid)
         role = db.exec(statement).first()
         
@@ -258,7 +258,7 @@ def delete_admin_role_service(role_id: str, db: Session) -> bool:
 def activate_role_service(role_id: str, db: Session) -> AdminRoleResponse:
     """Activate a role"""
     try:
-        role_uuid = UUID(role_id)
+        role_uuid = role_id
         statement = select(AdminRole).where(AdminRole.id == role_uuid)
         role = db.exec(statement).first()
         
@@ -307,7 +307,7 @@ def activate_role_service(role_id: str, db: Session) -> AdminRoleResponse:
 def deactivate_role_service(role_id: str, db: Session) -> AdminRoleResponse:
     """Deactivate a role"""
     try:
-        role_uuid = UUID(role_id)
+        role_uuid = role_id
         statement = select(AdminRole).where(AdminRole.id == role_uuid)
         role = db.exec(statement).first()
         
