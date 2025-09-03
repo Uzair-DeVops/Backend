@@ -1,5 +1,9 @@
 """
 Simple universal logger for the data migration project
+NOTE: Logging is currently DISABLED (set to CRITICAL level)
+File logging is completely DISABLED
+To re-enable logging, change the default level from "CRITICAL" to "INFO" in setup_logger()
+To re-enable file logging, uncomment the file handler code in setup_logger()
 """
 
 import logging
@@ -21,7 +25,7 @@ class Colors:
 # Emoji icons for different log levels
 class Icons:
     DEBUG = ""
-    INFO = "ℹ"
+    INFO = ""
     WARNING = ""
     ERROR = ""
     CRITICAL = ""
@@ -66,9 +70,9 @@ class ColoredFormatter(logging.Formatter):
         
         return super().format(record)
 
-def setup_logger(name: str = "data_migration", level: str = "INFO") -> logging.Logger:
+def setup_logger(name: str = "data_migration", level: str = "CRITICAL") -> logging.Logger:
     """
-    Setup a simple logger with colored console and file output
+    Setup a simple logger with colored console output only (file logging disabled)
     
     Args:
         name: Logger name
@@ -91,27 +95,24 @@ def setup_logger(name: str = "data_migration", level: str = "INFO") -> logging.L
         datefmt='%H:%M:%S'
     )
     
-    file_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
+    # File formatter removed since file logging is disabled
     
-    # Console handler with colors
+    # Console handler with colors - set to CRITICAL to minimize output
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.CRITICAL)
     console_handler.setFormatter(console_formatter)
     
-    # File handler (no colors in file)
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
+    # File handler (no colors in file) - DISABLED to close file logging
+    # log_dir = Path("logs")
+    # log_dir.mkdir(exist_ok=True)
     
-    file_handler = logging.FileHandler(log_dir / "data_migration.log")
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(file_formatter)
+    # file_handler = logging.FileHandler(log_dir / "data_migration.log")
+    # file_handler.setLevel(logging.CRITICAL)
+    # file_handler.setFormatter(file_formatter)
     
     # Add handlers to logger
     logger.addHandler(console_handler)
-    logger.addHandler(file_handler)
+    # logger.addHandler(file_handler)  # File logging disabled
     
     return logger
 

@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
 # FASTAPI APP
 app = FastAPI(
     version="0.1.0",
-    # lifespan=lifespan  
+    lifespan=lifespan  
 )
 
 # CORS MIDDLEWARE

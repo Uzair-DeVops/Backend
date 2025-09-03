@@ -9,28 +9,29 @@ from ..utils.my_logger import get_logger
 
 def initialize_database_engine():
     """
-    Initialize MySQL SQLModel engine
+    Initialize SQLite SQLModel engine
     """
     try:
         get_logger(name="UZAIR").info("🔧 Initializing Database engine...")
-        # Create SQLModel engine for MySQL ORM operations only
+        # Create SQLModel engine for SQLite ORM operations
         if settings.DATABASE_URL:
-            mysql_url = settings.DATABASE_URL
+            database_url = settings.DATABASE_URL
         else:
-            mysql_url = settings.DATABASE_URL
-        mysql_engine = create_engine(
-            mysql_url,
+            get_logger(name="UZAIR").error("❌ DATABASE_URL not configured")
+            return None
+            
+        # For SQLite, we don't need connection pooling settings
+        engine = create_engine(
+            database_url,
             echo=True,  # Set to False in production
-            pool_pre_ping=True,
-            pool_recycle=300,
-            pool_size=10,
-            max_overflow=20
+            connect_args={"check_same_thread": False}  # Required for SQLite with FastAPI
         )
+        
         # test connection by executing a simple query
-        with mysql_engine.connect() as connection:
+        with engine.connect() as connection:
             connection.execute(text("SELECT 1"))
         get_logger(name="UZAIR").info("✅ Database engine initialized successfully")
-        return mysql_engine
+        return engine
     except Exception as e:
         get_logger(name="UZAIR").error(f"❌ Could not initialize Database engine: {e}")
         return None
